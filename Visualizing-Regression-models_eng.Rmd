@@ -1,0 +1,134 @@
+---
+title: "Visualizing Regression models in R"
+author: "WR"
+date:
+output: slidy_presentation
+---
+  
+```{r setup, include = FALSE}
+
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(ggfortify)
+
+theme_set(theme_grey(base_size = 14))
+
+rm(list = ls())
+
+```
+
+# Model 1: Simple linear regression
+
+Data: mtcars (comes pre-installed with R)     
+Goal: predict fuel consumption in miles per gallon     
+First Model: predict mpg by horsepower     
+
+```{r mod1, echo = TRUE}
+data(mtcars)
+str(mtcars)
+library(ggplot2)
+
+ggplot(mtcars, aes(x = hp, y = mpg)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, size = 0.5) +
+  labs(x = "hp (horsepower)", y = "mpg (miles per gallon)",
+       title = "lm(mpg ~ hp, data = mtcars)")
+```
+
+# Model 2: Parallell slopes model
+
+```{r mod2, echo = TRUE}
+library(dplyr)
+mtcars$am <- factor(mtcars$am)
+mtcars$am <- recode(mtcars$am, "0" = "automatic", "1" = "manual")
+
+mod2 <- lm(mpg ~ disp + am, data = mtcars)
+
+library(broom)
+ggplot(augment(mod2), aes(x = disp, y = mpg, color = am)) +
+  geom_point() +
+  geom_line(aes(y = .fitted), size = 1) +
+  labs(x = "disp (displacement in cubic inch)", y = "mpg (miles per gallon)",
+       title = "lm(mpg ~ disp + am, data = mtcars)")
+```
+
+Parallel slopes are not an empirical result, but a model assumption. Does it hold?
+
+# Model 3: Are the slopes really parallel?
+
+## Using two geom_smooth-calls
+```{r mod3a, echo = TRUE}
+
+ggplot(mtcars, aes(x = disp, y = mpg, color = am)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "disp (displacement in cubic inch)", y = "mpg (miles per gallon)",
+       title = "mpg ~ disp separately by am, data = mtcars")
+```
+
+Interaction effect: am moderates effect of displacement on miles per gallon.
+
+## Modeling interaction in R
+
+```{r mod3b, echo = TRUE}
+
+mod3 <- lm(mpg ~ disp * am, data = mtcars)
+summary(mod3)
+
+ggplot(augment(mod3), aes(x = disp, y = mpg, color = am)) +
+  geom_point() +
+  geom_line(aes(y = .fitted), size = 1) +
+  labs(x = "disp (displacement in cubic inch)", y = "mpg (miles per gallon)",
+       title = "lm(mpg ~ disp * am, data = mtcars)")
+```
+
+Same plot as before! Interaction was modeled correctly.
+
+
+# Model 4: Two numeric predictors: Adding a third dimension
+
+The regression line now becomes a plane in 3D space.
+
+```{r mod4, echo = TRUE, message = FALSE}
+
+library(plotly)
+# p <- plot_ly(data = mtcars, z = ~mpg, x = ~disp, y = ~hp, opacity = 0.6) %>%
+#   add_markers()
+# p %>% add_surface(z = ~plane, x = ~disp, y = ~hp, showscale = FALSE) %>%
+#   layout(showlegend = FALSE)
+
+```
+
+![3D Regression model](D:/Eigene Dateien/Selbstständig/2017/Homepage/Videos/Regression-models/mtcars_3D-markers+plane.png)
+
+*Code commented out because it does not run in a stable way in RStudio. This is my only usecase for plain R outside of RStudio. Use plotly to generate the interactive plot in plain R.*
+
+Even parallel planes are possible.
+
+
+# Diagnostic plots
+
+## Base R
+
+Very simple code!
+
+```{r Diagnostic_BaseR, echo = TRUE, message = FALSE}
+
+par(mfrow = c(2, 2))
+plot(mod3)
+par(mfrow = c(1, 1))
+```
+
+## ggplot2
+
+ggplot2 is more elegant. Just as easy, using ggfortify!
+
+```{r Diagnostic_ggplot2, echo = TRUE, message = FALSE}
+
+library(ggfortify)
+autoplot(mod3)
+```
+
+Autoplot can do two more diagnostic plots, so 6 in total. See ?autoplot.
