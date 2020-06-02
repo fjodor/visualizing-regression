@@ -1,7 +1,5 @@
 # Visualizing regression models in R
 
-rm(list = ls())
-
 library(ggplot2)
 library(dplyr)
 library(broom)
