@@ -1,0 +1,225 @@
+---
+title: "Correlation and Regression: Visualization Matters! Anscombe"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: readable
+---
+
+```{r setup, include = FALSE}
+
+library(flexdashboard)
+library(tidyverse)
+library(kableExtra)
+library(plotly)
+
+knitr::opts_chunk$set(message = FALSE)
+
+```
+
+The Data
+=======================================
+
+Column {data-width = 650}
+-----------------------------------------------------------------------
+
+### Data
+
+```{r anscombe_dataset}
+
+# Prepare to show IDs (row numbers) on mouse-over in plotly charts
+
+anscombe <- anscombe %>%
+  rownames_to_column(var = "ID")
+
+anscombe %>% 
+  kbl(caption = "Anscombe's Quartet") %>% 
+  kable_paper("hover", full_width = FALSE,
+              lightable_options = "striped",
+              font_size = 18)
+
+
+```
+
+Column {data-width = 350}
+-----------------------------------------------------------------------
+
+### Data Summary
+
+<font size = "5">
+
+* Four pairs of {x, y} variables:  
+  {x1, y1} to {x4, y4} 
+
+* 11 rows
+
+* Published by **Francis J. Anscombe** (1973):  
+  *Graphs in statistical analysis.*  
+  The American Statistician, 27, 17–21
+
+</font>
+
+
+Descriptive Stats
+==============================================
+
+```{r pivot_longer}
+
+ansc_long <- anscombe %>% 
+  pivot_longer(cols = -ID,
+               names_to = c(".value", "Set"),
+               names_pattern = "(.)(.)"
+  ) %>% 
+  group_by(Set)
+
+```
+
+Column
+----------------------------------------------
+
+### Means
+
+```{r desc_mean}
+
+ansc_long %>% 
+  summarise(across(-ID,
+                   mean)) %>% 
+  kbl(caption = "Means of x and y") %>% 
+  kable_paper(full_width = FALSE, font_size = 18)
+
+```
+
+
+Column
+----------------------------------------------
+
+### Standard Deviations
+
+```{r desc_sd}
+
+ansc_long %>% 
+  summarise(across(-ID,
+            sd)) %>% 
+  kbl(caption = "Standard Deviations<br>   of x and y") %>% 
+  kable_paper(full_width = FALSE, font_size = 18)
+
+```
+
+
+Correlation and Regression
+==============================================
+
+Column
+----------------------------------------------
+
+### Correlations
+
+```{r corr}
+
+ansc_long %>% 
+  ungroup() %>% 
+  nest_by(Set) %>% 
+  mutate(cor = list(cor(data$x, data$y)),
+         cor = unlist(cor)) %>% 
+  select(-data) %>% 
+  kbl(caption = "Correlations between x and y") %>% 
+  kable_paper(full_width = FALSE, font_size = 18)
+
+```
+
+Column
+----------------------------------------------
+
+### Regression: y ~ x
+
+```{r reg}
+
+ansc_long %>% 
+  ungroup() %>% 
+  nest_by(Set) %>% 
+  mutate(model = list(lm(y ~ x, data = data))) %>% 
+  summarise(broom::tidy(model)) %>% 
+  select(Set, term, estimate) %>% 
+  pivot_wider(names_from = "term", values_from = "estimate") %>% 
+  kbl(caption = "Regression formulas") %>% 
+  kable_paper(full_width = FALSE, font_size = 18)
+  
+
+
+```
+
+Visualizations
+==============================================
+
+Row {.tabset}
+----------------------------------------------
+
+### x1 and y1
+
+```{r plotting_prep}
+
+
+# Create custom plotting function to avoid code redundany
+# Need to use tidy evaluation
+
+my_plot <- function(xvar, yvar) {
+  ggplot(anscombe, aes(x = {{ xvar }}, y = {{ yvar }}, label = ID)) +
+    geom_point(size = 2) +
+    geom_smooth(method = "lm", col = "blue", se = FALSE) +
+    labs(title = paste("Scatterplot and Regression Line:", ensym(yvar), "~", ensym(xvar)))
+}
+
+
+```
+
+
+```{r x1_y1}
+
+p <- my_plot(x1, y1)
+ggplotly(p)
+
+```
+
+### x2 and y2
+
+```{r x2_y2}
+
+p <- my_plot(x2, y2)
+ggplotly(p)
+
+```
+
+### x3 and y3
+
+```{r x3_y3}
+
+p <- my_plot(x3, y3)
+ggplotly(p)
+
+```
+
+### x4 and y4
+
+```{r x4_y4}
+
+p <- my_plot(x4, y4)
+ggplotly(p)
+
+```
+
+### Overview: All plots
+
+```{r plots_overview}
+
+p <- ansc_long %>% 
+  ggplot(aes(x = x, y = y, label = ID)) +
+    geom_point(size = 2) +
+    geom_smooth(method = "lm", col = "blue", se = FALSE) +
+    facet_wrap(~Set, nrow = 2, labeller = "label_both") +
+    labs(title = "Scatterplots and Regression Lines: y ~ x")
+
+ggplotly(p)
+
+```
+
