@@ -96,7 +96,7 @@ p <- plot_ly(data = mtcars, z = ~mpg, x = ~disp, y = ~hp, opacity = 0.6) %>%
 p %>% add_surface(z = ~plane, x = ~disp, y = ~hp, showscale = FALSE) %>%
   layout(showlegend = FALSE)
 
-rm(plane, plane2, p, disp, hp, mpg, m)
+rm(plane, p, disp, hp, mpg)
 
 
 #############################################################
